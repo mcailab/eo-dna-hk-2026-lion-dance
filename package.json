@@ -1,0 +1,3 @@
+{ "name": "eo-dna-hk-2026-lion-dance", "private": true, "type": "module",
+  "scripts": { "export": "node scripts/export.mjs http://localhost:8080/index.html?render eo-25-chapters-1080p.mp4 30" },
+  "dependencies": { "puppeteer-core": "23.11.1" } }

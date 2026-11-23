@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EO Lion Dance Backdrop</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@600;700&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;color:#fff;font-family:Rajdhani,sans-serif}
+  #wrap{position:absolute;left:0;right:0;top:0;bottom:56px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  body.render #wrap{bottom:0} body.render #ui{display:none}
+  #stage{width:1920px;height:1080px;position:relative;flex:none;background:#000;overflow:hidden}
+  #stage canvas{position:absolute;inset:0;display:block}
+  .o{position:absolute;left:0;right:0;text-align:center;opacity:0;pointer-events:none}
+  #counter{top:132px;font:700 30px Rajdhani;letter-spacing:.6em;text-indent:.6em;color:#ffd166;text-shadow:0 0 12px rgba(255,176,32,.8)}
+  .nm{bottom:150px;will-change:opacity,transform,filter;font:800 112px Orbitron;letter-spacing:.06em;color:#eafffb;
+        text-shadow:0 0 6px #fff,0 0 18px #ffd166,0 0 42px #ffb020,0 0 80px rgba(255,176,32,.55)}
+  #hk{bottom:150px;font:800 150px Orbitron;letter-spacing:.06em;color:#fff0f6;
+      text-shadow:0 0 6px #fff,0 0 22px #ff2d7a,0 0 55px #ff2d7a,0 0 110px rgba(255,45,122,.7)}
+  #hkZh{bottom:350px;font:700 76px 'Noto Sans TC';letter-spacing:.45em;text-indent:.45em;color:#ffe4ee;
+        text-shadow:0 0 6px #fff,0 0 22px #ff2d7a,0 0 60px rgba(255,45,122,.8)}
+  #top{top:64px;font:700 34px Rajdhani;letter-spacing:.42em;text-indent:.42em;line-height:1.25;color:#ffe4ee;text-shadow:0 0 6px #fff,0 0 18px #ff2d7a,0 0 40px rgba(255,45,122,.6)}
+  #top .t1{font-size:50px} #top .t2{font-size:36px;margin-top:6px}
+  #ui{position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;
+      background:#0a0e1a;border-top:1px solid #1b2440;font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:#cfd8ee}
+  #ui button{background:#16213d;color:#e8eefc;border:1px solid #2a3a66;border-radius:6px;padding:6px 12px;font:600 13px -apple-system,sans-serif;cursor:pointer}
+  #ui a.btn{background:#16213d;color:#e8eefc;border:1px solid #2a3a66;border-radius:6px;padding:6px 12px;font:600 13px -apple-system,sans-serif;text-decoration:none;white-space:nowrap}
+  #ui #dl{background:#1f6f4a;border-color:#2fa36d}
+  #scrub{flex:1;accent-color:#39ff9c}
+  #time{font-variant-numeric:tabular-nums;min-width:120px;text-align:right}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="hud" width="1920" height="1080" style="position:absolute;inset:0"></canvas>
+  <div class="o" id="top"><div class="t1">DISCOVER NORTH ASIA — HONG KONG</div><div class="t2">30TH ANNIVERSARY CELEBRATION</div></div>
+  <div class="o" id="counter"></div>
+  <div class="o nm" id="nameA"></div><div class="o nm" id="nameB"></div>
+  <div class="o" id="hkZh">香 港</div>
+  <div class="o" id="hk">HONG KONG</div>
+</div></div>
+<div id="ui"><button id="play">❚❚ Pause</button><button id="again">↺ Replay</button><a class="btn" id="dl" href="eo-25-chapters-1080p.mp4" download>⬇ Download MP4 (1080p)</a><a class="btn" id="edit" href="#" target="_blank" rel="noopener">✎ Edit chapters</a><button id="fs">⛶</button><input id="scrub" type="range" min="0" max="28" step="0.01" value="0"><span id="time"></span></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
+import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
+import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
+import {geoPath, geoEquirectangular} from 'https://cdn.jsdelivr.net/npm/d3-geo@3.1.0/+esm';
+import {feature, mesh} from 'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm';
+
+const W=1920,H=1080;
+const CFG=await (await fetch('chapters.json',{cache:'no-store'})).json();
+const CH=CFG.chapters.map(c=>[c.name, (c.lat ?? null), (c.lon ?? null)]);
+const HKP=[CFG.final.lat, CFG.final.lon];
+// timeline
+const T0=1.2, STEP=(CFG.seconds_per_chapter||0.6), T_END_LIST=T0+CH.length*STEP;          // 25.2s
+const T_HK=T_END_LIST+0.8, IMP=T_HK+1.6, DIVE=IMP+5.6, END=DIVE+2.0;
+
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const smooth=x=>{x=clamp(x);return x*x*(3-2*x);};
+const ramp=(t,a,b)=>smooth((t-a)/(b-a));
+function ll(lat,lon,r=1){const p=(90-lat)*Math.PI/180,th=(lon+180)*Math.PI/180;return new THREE.Vector3(-r*Math.sin(p)*Math.cos(th),r*Math.cos(p),r*Math.sin(p)*Math.sin(th));}
+// deterministic neon flicker: on/off pattern in the first 0.12s after start
+function flick(u){ if(u<0) return 0; if(u>0.14) return 1; const k=Math.floor(u/0.02); return [1,0,1,1,0,1,1][k]??1; }
+
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(1); renderer.setSize(W,H); renderer.setClearColor(0x000000);
+document.getElementById('stage').prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,W/H,0.01,200);
+const composer=new EffectComposer(renderer); composer.setSize(W,H);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(W,H),0.55,0.3,0.32); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const fat=(px,col,op)=>{const m=new LineMaterial({color:col,linewidth:px,transparent:true,opacity:op,depthWrite:false}); m.resolution.set(W,H); return m;};
+camera.setViewOffset(W,H,0,170,W,H);
+const dotTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'rgba(255,255,255,.85)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);})();
+
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(0.995,96,96),new THREE.MeshBasicMaterial({color:0x000302})));
+// thin neon rim
+const rim=new THREE.Mesh(new THREE.SphereGeometry(1.06,96,96),new THREE.ShaderMaterial({
+  vertexShader:`varying vec3 vN; void main(){vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`varying vec3 vN; uniform float a; void main(){ float i=pow(clamp(0.55-dot(vN,vec3(0.,0.,1.)),0.,1.),3.); gl_FragColor=vec4(vec3(0.1,1.,0.6)*i*0.45*a,1.); }`,
+  uniforms:{a:{value:0}}, side:THREE.BackSide, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false}));
+scene.add(rim);
+
+let dotMat, coastMat, coastGlowMat, gratMat;
+async function land(){
+  const topo=await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json')).json();
+  const MW=2048,MH=1024,mc=document.createElement('canvas');mc.width=MW;mc.height=MH;const ctx=mc.getContext('2d');
+  ctx.fillStyle='#fff';ctx.beginPath();geoPath(geoEquirectangular().scale(MW/(2*Math.PI)).translate([MW/2,MH/2]),ctx)(feature(topo,topo.objects.land));ctx.fill();
+  const img=ctx.getImageData(0,0,MW,MH).data, S=260000, GA=Math.PI*(3-Math.sqrt(5)), pos=[];
+  for(let i=0;i<S;i++){const y=1-2*(i+.5)/S, lat=Math.asin(y)*180/Math.PI, lon=((i*GA*180/Math.PI)%360)-180;
+    if(img[(Math.min(MH-1,Math.floor((90-lat)/180*MH))*MW+Math.min(MW-1,Math.floor((lon+180)/360*MW)))*4]>128){const v=ll(lat,lon,1);pos.push(v.x,v.y,v.z);} }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  dotMat=new THREE.PointsMaterial({size:0.0058,map:dotTex,color:0x1fcf8a,transparent:true,opacity:0,depthWrite:false});
+  scene.add(new THREE.Points(g,dotMat));
+  const toSeg=(lines,r)=>{const seg=[]; for(const line of lines){ for(let k=0;k<line.length-1;k++){ const a=ll(line[k][1],line[k][0],r), b=ll(line[k+1][1],line[k+1][0],r); seg.push(a.x,a.y,a.z,b.x,b.y,b.z);} } return seg;};
+  const fatSeg=(seg,mat)=>{const gg=new LineSegmentsGeometry(); gg.setPositions(seg); const o=new LineSegments2(gg,mat); scene.add(o); return o;};
+  // coastlines: bright 2.2px neon
+  // balanced coastline: 50m detail, drop specks, light point thinning
+  const ext=l=>{ let a=1e9,b=-1e9,c=1e9,d=-1e9; for(const [x,y] of l){a=Math.min(a,x);b=Math.max(b,x);c=Math.min(c,y);d=Math.max(d,y);} return (b-a)+(d-c); };
+  const thin=l=>l.filter((pt,i)=>i%2===0||i===l.length-1);
+  const mid=mesh(topo,topo.objects.land).coordinates.filter(l=>ext(l)>0.9).map(thin);
+  coastMat=fat(2.2,0x4dffb8,0); fatSeg(toSeg(mid,1.0015),coastMat);
+  // faint country borders for texture
+  const ctopo=await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')).json();
+  coastGlowMat=fat(1.0,0x1aa878,0); fatSeg(toSeg(mesh(ctopo,ctopo.objects.countries,(a,b)=>a!==b).coordinates,1.0012),coastGlowMat);
+
+}
+
+const hk=ll(HKP[0],HKP[1],1);
+const mk=(col,r)=>new THREE.Mesh(new THREE.SphereGeometry(r,16,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0}));
+const GOLD=0xffd166;
+const EO_RINGS=[
+  {c:'#5a5cff', r:1.00, seg:[[-40,68],[96,292]]},
+  {c:'#ff3d6e', r:0.83, seg:[[-150,128],[150,190]]},
+  {c:'#ff8a2a', r:0.66, seg:[[-100,150],[175,235]]},
+  {c:'#ffc928', r:0.50, seg:[[30,315]]},
+  {c:'#22c9b2', r:0.34, seg:[[-185,100]]},
+];
+const pins=CH.map(([n,lat,lon],i)=>{
+  if(lat===null) return null;
+  const p=ll(lat,lon,1), core=mk(GOLD,0.0045); core.position.copy(p.clone().multiplyScalar(1.003));
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.006,0.008,48),new THREE.MeshBasicMaterial({color:0xffc53d,transparent:true,opacity:0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ring.position.copy(p.clone().multiplyScalar(1.004)); ring.lookAt(p.clone().multiplyScalar(2));
+  // arc to HK
+  const ang=p.angleTo(hk), alt=Math.min(0.42,0.05+ang*0.14), P=120, pts=new Float32Array(P*3);
+  for(let k=0;k<P;k++){const s=k/(P-1),v=p.clone().lerp(hk,s).normalize().multiplyScalar(1+alt*Math.sin(Math.PI*s));pts.set([v.x,v.y,v.z],k*3);}
+  const ag=new THREE.BufferGeometry(); ag.setAttribute('position',new THREE.BufferAttribute(pts,3)); ag.setDrawRange(0,0);
+  const arc=new THREE.Line(ag,new THREE.LineBasicMaterial({color:0xffc53d,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const bh=0.12, beam=new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,bh,8,1,true),new THREE.MeshBasicMaterial({color:0x6dffd8,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p.clone().normalize()); beam.position.copy(p.clone().multiplyScalar(1+bh/2));
+  const pulse=new THREE.Mesh(new THREE.RingGeometry(0.010,0.013,48),new THREE.MeshBasicMaterial({color:0x6dffd8,transparent:true,opacity:0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+  pulse.position.copy(p.clone().multiplyScalar(1.004)); pulse.lookAt(p.clone().multiplyScalar(2));
+  scene.add(core,ring,arc,beam,pulse);
+  return {core,ring,arc,P,ang,beam,pulse,bh};
+});
+pins.forEach(p=>{ if(!p) return; const g=new THREE.BufferGeometry(); g.setAttribute('position',p.arc.geometry.getAttribute('position')); g.setDrawRange(0,0);
+  p.comet=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xfff0f6,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false})); scene.add(p.comet); });
+const shocks=['#ff3d6e','#ffc928'].map(c=>{ const m=new THREE.Mesh(new THREE.RingGeometry(0.965,1.0,128),new THREE.MeshBasicMaterial({color:new THREE.Color(c),transparent:true,opacity:0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false})); scene.add(m); return m; });
+const hkCore=mk(0xffffff,0.008); hkCore.position.copy(hk.clone().multiplyScalar(1.004));
+const hkRing=new THREE.Mesh(new THREE.RingGeometry(0.010,0.013,64),new THREE.MeshBasicMaterial({color:0xff2d7a,transparent:true,opacity:0,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+hkRing.position.copy(hk.clone().multiplyScalar(1.005)); hkRing.lookAt(hk.clone().multiplyScalar(2));
+const hkPulse=hkRing.clone(); hkPulse.material=hkRing.material.clone();
+const beamH=0.3, beam=new THREE.Mesh(new THREE.CylinderGeometry(0.0018,0.0018,beamH,8,1,true),new THREE.MeshBasicMaterial({color:0xff2d7a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),hk.clone().normalize()); beam.position.copy(hk.clone().multiplyScalar(1+beamH/2));
+scene.add(hkCore,hkRing,hkPulse,beam);
+shocks.forEach(m=>{ m.position.copy(hk.clone().multiplyScalar(1.004)); m.lookAt(hk.clone().multiplyScalar(2)); });
+
+const limbPts=[]; for(let k=0;k<256;k++){ const a0=k/256*Math.PI*2, a1=(k+1)/256*Math.PI*2; limbPts.push(Math.cos(a0),Math.sin(a0),0,Math.cos(a1),Math.sin(a1),0); }
+const limbGeo=new LineSegmentsGeometry(); limbGeo.setPositions(limbPts);
+const limbMat=fat(2.6,0x5dffc0,0); const limb=new LineSegments2(limbGeo,limbMat); scene.add(limb);
+function placeLimb(){ const d=camera.position.length(), dir=camera.position.clone().normalize(); limb.position.copy(dir.clone().multiplyScalar(1/d)); limb.scale.setScalar(Math.sqrt(1-1/(d*d))*1.001); limb.lookAt(camera.position); }
+function drawEO(hud,x,y,u,R,alpha,glow,fly=0){
+  hud.save(); hud.translate(x,y); hud.globalAlpha=alpha; hud.lineCap='round';
+  EO_RINGS.forEach((rg,j)=>{
+    const lag=clamp((u-0.05*(4-j))/0.32), sweep=smooth(lag); if(sweep<=0) return;
+    const spin=(j%2?-1:1)*(u*1.1+(1-sweep)*1.2);
+    hud.strokeStyle=rg.c; hud.shadowColor=rg.c; hud.shadowBlur=glow; hud.lineWidth=Math.max(3,R*0.075);
+    for(const [s0,s1] of rg.seg){ const st=(s0*Math.PI/180)+spin, en=st+((s1-s0)*Math.PI/180)*sweep; hud.beginPath(); hud.arc(0,0,R*rg.r*(1+fly*1.9*(1-sweep)),st,en); hud.stroke(); }
+  });
+  hud.shadowBlur=0; hud.fillStyle='#ffffff'; hud.beginPath(); hud.arc(0,0,Math.max(4,R*0.05),0,Math.PI*2); hud.fill();
+  hud.restore();
+}
+function drawEOBurst(hud,x,y,u,R,alpha,glow,spinT){
+  hud.save(); hud.translate(x,y); hud.globalAlpha=alpha; hud.lineCap='round';
+  EO_RINGS.forEach((rg,j)=>{
+    const uj=Math.max(0,u-0.045*j);
+    const m=smooth(clamp(uj/0.12))*(1+1.35*Math.exp(-4.2*uj)*Math.cos(8*uj));   // burst out, spring back, settle at 1
+    if(m<=0.001) return;
+    const spin=(j%2?-1:1)*(spinT*0.55+Math.exp(-3*uj)*0.9);
+    hud.strokeStyle=rg.c; hud.shadowColor=rg.c; hud.shadowBlur=glow; hud.lineWidth=Math.max(3,R*0.075)*(0.7+0.3*Math.min(1,m));
+    for(const [s0,s1] of rg.seg){ const st=(s0*Math.PI/180)+spin, en=st+((s1-s0)*Math.PI/180); hud.beginPath(); hud.arc(0,0,R*rg.r*m,st,en); hud.stroke(); }
+  });
+  hud.shadowBlur=0; hud.fillStyle='#ffffff'; hud.beginPath(); hud.arc(0,0,Math.max(4,R*0.05),0,Math.PI*2); hud.fill();
+  hud.restore();
+}
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+function camAt(t){
+  // spin from Americas to Asia during the list, then push in on HK
+  const f=clamp((t-T0)/STEP,-4,CH.length+2);
+  const acc=new THREE.Vector3(); let sw=0;
+  for(let k=0;k<CH.length;k++){ const c=CH[k]; if(c[1]===null) continue; const w=Math.exp(-Math.pow((k-f)/1.5,2)); acc.add(ll(c[1],c[2],1).multiplyScalar(w)); sw+=w; }
+  const after=ramp(t,T_END_LIST-0.6,T_HK);
+  let lat=40, lon=-120;
+  if(sw>1e-4){ acc.normalize(); lat=Math.asin(acc.y)*180/Math.PI; lon=Math.atan2(acc.z,-acc.x)*180/Math.PI-180; if(lon<-180) lon+=360; }
+  { let d=HKP[1]-lon; if(d>180) lon+=360; if(d<-180) lon-=360; }
+  lon=lon+(HKP[1]-lon)*after; lat=lat+(HKP[0]+6-lat)*after; lat=Math.max(-5,Math.min(42,lat));
+  const z=ramp(t,T_HK-0.1,DIVE);
+  const zin=ramp(t,0.4,T0+0.8); const dk=smooth(clamp((t-DIVE)/(END-DIVE-0.15))); let dist=(3.4-(3.4-2.6)*zin)-(0.3*z); dist=dist+(1.04-dist)*dk*dk;
+  let la=lat+(HKP[0]+4-lat)*z, lo=lon+(HKP[1]-(HKP[1]+5))*z; la=la+(HKP[0]-la)*dk; lo=lo+(HKP[1]-lo)*dk; camera.setViewOffset(W,H,0,170*(1-dk),W,H);
+  const e=t>IMP?Math.exp(-(t-IMP)*6):0; camera.position.copy(ll(la+0.18*Math.sin(t*61)*e,lo+0.18*Math.cos(t*53)*e,dist)); camera.up.set(0,1,0); camera.lookAt(0,0,0); camera.updateMatrixWorld(true);
+}
+function render(t){
+  t=clamp(t,0,END);
+  camAt(t); placeLimb();
+  const gIn=ramp(t,0.1,1.1);
+  limbMat.opacity=0.9*gIn;
+  const dim=(1-0.3*ramp(t,T_END_LIST,T_HK))*(1-0.3*ramp(t,IMP,IMP+0.8));
+  if(dotMat) dotMat.opacity=0.5*gIn*dim;
+  if(coastMat){ coastMat.opacity=0.8*gIn*dim; coastGlowMat.opacity=0.22*gIn*dim; }
+  rim.material.uniforms.a.value=gIn;
+  $('top').style.opacity=ramp(t,IMP+1.6,IMP+2.1)*(1-ramp(t,DIVE-0.3,DIVE+0.4));
+
+  // chapter list
+  const idx=Math.floor((t-T0)/STEP);
+  // two alternating layers so consecutive names cross-dissolve
+  for(const [elId,parity] of [['nameA',0],['nameB',1]]){
+    const el=$(elId);
+    let k=Math.floor((t-T0)/STEP); if(((k%2)+2)%2!==parity) k-=1;   // latest chapter index of this parity
+    if(k<0||k>=CH.length||t<T0){ el.style.opacity=0; continue; }
+    const u=t-(T0+k*STEP);
+    const inn=ramp(u,0,0.22), out=ramp(u,STEP-0.08,STEP+0.16);
+    el.textContent=CH[k][0];
+    el.style.opacity=inn*(1-out);
+    el.style.transform=`translateY(${(1-inn)*26-out*18}px) scale(${0.97+0.03*inn})`;
+    el.style.filter=`blur(${(1-inn)*7+out*5}px)`;
+  }
+  if(false){ }
+  $('counter').style.opacity=0;
+
+  pins.forEach((p,i)=>{ if(!p) return; const r=T0+i*STEP;
+    const on=ramp(t,r,r+0.06);
+    p.core.material.opacity=on; p.core.scale.setScalar(Math.max(1e-4,on*(1+1.2*Math.max(0,1-(t-r)/0.25))));
+    p.ring.material.opacity=on*0.9*(1-0.5*ramp(t,r+0.3,r+1.2))*(1-0.85*ramp(t,T_HK,T_HK+0.6));
+    p.ring.scale.setScalar(Math.max(1e-4,on*(1+1.5*ramp(t,r,r+0.5))));
+    const cur=ramp(t,r,r+0.08)*(1-ramp(t,r+STEP+0.05,r+STEP+0.45));      // 1 while this chapter is on screen
+    p.beam.material.opacity=0; p.beam.scale.set(1,Math.max(1e-4,ramp(t,r,r+0.25)),1);
+    const ph=t>r?((t-r)%0.6)/0.6:0; p.pulse.scale.setScalar(t>r?1+ph*2.6:1e-4); p.pulse.material.opacity=0;
+    p.core.scale.multiplyScalar(1-0.6*cur); p.ring.material.opacity*=(1-cur)*0.6;
+    const d=0.55+p.ang*0.25;
+    p.arc.geometry.setDrawRange(0,Math.floor(p.P*ramp(t,r+0.05,r+0.05+d)));
+    p.arc.material.color.setHex(t>=T_HK? 0xff6aa8 : 0xffc53d);
+    p.arc.material.opacity=(t>=T_HK? 0.12+0.25*ramp(t,T_HK,IMP)*(1-0.6*ramp(t,IMP,IMP+1.5)) : 0.85-0.7*ramp(t,r+0.05+d,r+0.05+d+0.8));
+  });
+
+  // gold lock-on reticle for the current chapter (2D, projected)
+  const hud=$('hud').getContext('2d'); hud.clearRect(0,0,W,H);
+  const camDir=camera.position.clone().normalize();
+  for(let k=Math.max(0,idx-1);k<=Math.min(CH.length-1,idx);k++){
+    const pp=pins[k]; if(!pp||t<T0) continue;
+    const r0=T0+k*STEP, u=t-r0; const a=ramp(u,0,0.1)*(1-ramp(u,STEP-0.05,STEP+0.2)); if(a<=0.01) continue;
+    const wp=pp.core.position.clone(); if(wp.clone().normalize().dot(camDir)<0.15) continue;
+    const v=wp.project(camera), x=(v.x+1)/2*W, y=(1-v.y)/2*H;
+    drawEO(hud,x,y,u,58*(0.75+0.25*smooth(clamp(u/0.32))),a,14);
+  }
+
+  // ===== FINALE (one beat: everything lands at IMP) =====
+  const hkv=hkCore.position.clone().project(camera), hx=(hkv.x+1)/2*W, hy=(1-hkv.y)/2*H;
+  shocks.forEach(m=>{ m.material.opacity=0; });
+  // 1) comets: each timed so all arrive at IMP together
+  pins.forEach((p)=>{ if(!p) return; const dur=0.75+0.55*(p.ang/Math.PI), s0=IMP-dur, pr=clamp((t-s0)/dur), pe=pr*pr*(3-2*pr)*0.35+pr*0.65;
+    const head=Math.floor(p.P*pe), tail=26;
+    p.comet.geometry.setDrawRange(Math.max(0,head-tail),Math.min(tail,head)); p.comet.material.opacity=(pr>0&&pr<1)?1:0;
+    if(pr>0&&pr<1){ const arr=p.comet.geometry.getAttribute('position').array, k=Math.min(p.P-1,head)*3;
+      const v=new THREE.Vector3(arr[k],arr[k+1],arr[k+2]); if(v.clone().normalize().dot(camDir)>0){ v.project(camera);
+        const gx=(v.x+1)/2*W, gy=(1-v.y)/2*H, gr=hud.createRadialGradient(gx,gy,0,gx,gy,14); gr.addColorStop(0,'rgba(255,245,250,1)'); gr.addColorStop(1,'rgba(255,61,110,0)');
+        hud.fillStyle=gr; hud.beginPath(); hud.arc(gx,gy,14,0,Math.PI*2); hud.fill(); } } });
+  if(t>=IMP-0.05){ const iu=t-IMP;
+    // 2) short flash
+    const fl=Math.max(0,1-Math.abs(iu)/0.32); if(fl>0){ const g=hud.createRadialGradient(hx,hy,0,hx,hy,520); g.addColorStop(0,`rgba(255,255,255,${0.9*fl})`); g.addColorStop(0.3,`rgba(255,140,190,${0.35*fl})`); g.addColorStop(1,'rgba(0,0,0,0)'); hud.fillStyle=g; hud.fillRect(0,0,W,H); }
+    // 3) a few EO-coloured sparks
+    if(iu>0&&iu<0.9){ for(let k=0;k<30;k++){ const ang=(k*137.508)*Math.PI/180, sp=300+((k*53)%140), d=sp*(1-Math.exp(-3.5*iu))/3.5, al=(1-iu/0.9);
+      hud.fillStyle=EO_RINGS[k%5].c; hud.globalAlpha=al; hud.beginPath(); hud.arc(hx+Math.cos(ang)*d,hy+Math.sin(ang)*d,2.8,0,Math.PI*2); hud.fill(); } hud.globalAlpha=1; }
+    // 4) faint rotating rays during the hold only
+    const ra=0.09*ramp(t,IMP+0.6,IMP+1.4)*(1-ramp(t,DIVE,DIVE+0.6));
+    if(ra>0){ hud.save(); hud.translate(hx,hy); hud.rotate(iu*0.2); for(let k=0;k<12;k++){ hud.rotate(Math.PI*2/12); const g=hud.createLinearGradient(0,0,520,0); g.addColorStop(0,EO_RINGS[k%5].c); g.addColorStop(1,'rgba(0,0,0,0)'); hud.globalAlpha=ra; hud.fillStyle=g; hud.beginPath(); hud.moveTo(0,0); hud.lineTo(520,-18); hud.lineTo(520,18); hud.closePath(); hud.fill(); } hud.restore(); }
+    // 5) EO rings burst out from HK and spring back into the mark; breathe during hold; grow through camera on the dive
+    const dv=smooth(clamp((t-DIVE)/(END-DIVE)));
+    const R=150*(1+0.025*Math.sin(iu*2.2))*(1+9*dv*dv);
+    drawEOBurst(hud,hx,hy,iu,R,1-0.85*dv,20+8*(0.5+0.5*Math.sin(iu*2.2)),iu);
+  }
+
+  // dark beat, then HK
+  const h=t-T_HK;
+  const hkOn=flick(h);
+  hkCore.material.opacity=hkOn; hkRing.material.opacity=0;
+  hkRing.scale.setScalar(Math.max(1e-4,hkOn*(1+0.3*Math.sin(h*6))));
+  const ph=h>0?(h%1.1)/1.1:0; hkPulse.scale.setScalar(h>0?1+ph*3:1e-4); hkPulse.material.opacity=0;
+  beam.material.opacity=0; beam.scale.set(1,Math.max(1e-4,ramp(h,0,0.5)),1);
+  $('hk').style.opacity=t>=IMP?1-ramp(t,DIVE-0.3,DIVE+0.4):0;
+  [...$('hk').children].forEach((sp,k)=>{ sp.style.opacity=flick(t-(IMP+0.45+k*0.05)); });
+  $('hkZh').style.opacity=ramp(t,IMP+1.05,IMP+1.5)*(1-ramp(t,DIVE-0.3,DIVE+0.4));
+  composer.render();
+  const fb=ramp(t,END-0.9,END); if(fb>0){ hud.fillStyle=`rgba(0,0,0,${fb})`; hud.fillRect(0,0,W,H); }
+}
+
+const params=new URLSearchParams(location.search);
+if(params.has('render')) document.body.classList.add('render');
+const fit=()=>{const s=Math.min(innerWidth/W,(innerHeight-(params.has('render')?0:56))/H);$('stage').style.transform=`scale(${s})`;};
+addEventListener('resize',fit); fit();
+document.querySelector('#top .t1').textContent=CFG.event_line_1; document.querySelector('#top .t2').textContent=CFG.event_line_2; $('hkZh').textContent=CFG.final.name_zh||''; document.title='EO Lion Dance Backdrop';
+$('hk').innerHTML=[...CFG.final.name].map(c=>`<span>${c===' '?'&nbsp;':c}</span>`).join('');
+await land();
+window.__END=END; window.__render=render;
+const scrub=$('scrub'); scrub.max=END;
+let t=parseFloat(params.get('t')||'0'), playing=!params.has('t')&&!params.has('render'), last=performance.now();
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'❚❚ Pause':'▶ Play'; if(t>=END)t=0;};
+{ const m=location.hostname.match(/^([^.]+)\.github\.io$/), repo=location.pathname.split('/').filter(Boolean)[0];
+  if(m&&repo) $('edit').href=`https://github.com/${m[1]}/${repo}/edit/main/chapters.json`; else $('edit').style.display='none'; }
+$('fs').onclick=()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); };
+fetch('eo-25-chapters-1080p.mp4',{method:'HEAD'}).then(r=>{ if(!r.ok){ $('dl').textContent='MP4 building…'; $('dl').removeAttribute('href'); } }).catch(()=>{});
+$('again').onclick=()=>{t=0;playing=true;$('play').textContent='❚❚ Pause';};
+scrub.oninput=()=>{t=parseFloat(scrub.value);};
+function loop(now){const dt=(now-last)/1000;last=now; if(playing){t+=dt; if(t>=END){t=END;playing=false;$('play').textContent='▶ Play';}}
+  render(t); scrub.value=t; $('time').textContent=`${t.toFixed(1)}s / ${END.toFixed(1)}s`; if(!params.has('render')) requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+window.__ready=true;
+</script>
+</body>
+</html>

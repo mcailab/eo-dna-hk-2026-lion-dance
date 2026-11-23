@@ -1,0 +1,32 @@
+{
+  "seconds_per_chapter": 0.6,
+  "event_line_1": "DISCOVER NORTH ASIA — HONG KONG",
+  "event_line_2": "30TH ANNIVERSARY CELEBRATION",
+  "final": { "name": "HONG KONG", "name_zh": "香 港", "lat": 22.32, "lon": 114.17 },
+  "chapters": [
+    { "name": "EDMONTON",       "lat": 53.55,  "lon": -113.49 },
+    { "name": "PORTLAND",       "lat": 45.52,  "lon": -122.68 },
+    { "name": "LOS ANGELES",    "lat": 34.05,  "lon": -118.24 },
+    { "name": "HOUSTON",        "lat": 29.76,  "lon": -95.37 },
+    { "name": "APAC BRIDGE" },
+    { "name": "MELBOURNE",      "lat": -37.81, "lon": 144.96 },
+    { "name": "INDONESIA",      "lat": -6.20,  "lon": 106.85 },
+    { "name": "SINGAPORE",      "lat": 1.35,   "lon": 103.82 },
+    { "name": "MALAYSIA",       "lat": 3.14,   "lon": 101.69 },
+    { "name": "TAIPEI",         "lat": 25.03,  "lon": 121.56 },
+    { "name": "KOREA",          "lat": 37.57,  "lon": 126.98 },
+    { "name": "TOKYO CENTRAL",  "lat": 35.69,  "lon": 139.69 },
+    { "name": "TOKYO PLATINUM", "lat": 35.66,  "lon": 139.84 },
+    { "name": "KANSAI METRO",   "lat": 34.75,  "lon": 135.45 },
+    { "name": "OSAKA",          "lat": 34.69,  "lon": 135.50 },
+    { "name": "KYOTO",          "lat": 35.01,  "lon": 135.77 },
+    { "name": "KOBE",           "lat": 34.69,  "lon": 135.20 },
+    { "name": "SHENYANG",       "lat": 41.80,  "lon": 123.43 },
+    { "name": "DALIAN",         "lat": 38.91,  "lon": 121.60 },
+    { "name": "BEIJING",        "lat": 39.90,  "lon": 116.41 },
+    { "name": "CHINA EAST",     "lat": 30.60,  "lon": 120.40 },
+    { "name": "SHANGHAI",       "lat": 31.23,  "lon": 121.47 },
+    { "name": "GUANGZHOU",      "lat": 23.13,  "lon": 113.26 },
+    { "name": "SHENZHEN",       "lat": 22.54,  "lon": 114.06 }
+  ]
+}
