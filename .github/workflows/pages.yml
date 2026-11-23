@@ -60,12 +60,15 @@ jobs:
       - name: Join chunks into one MP4
         run: |
           for i in $(seq 0 $((CHUNKS-1))); do echo "file 'seg-$i.mp4'" >> list.txt; done
-          ffmpeg -v error -f concat -safe 0 -i list.txt -c copy -movflags +faststart eo-25-chapters-1080p.mp4
+          ffmpeg -v error -f concat -safe 0 -i list.txt -c copy joined.mp4
+          # thumbnail = Hong Kong finale frame (4.5 s before the end), also embedded as the MP4 cover
+          ffmpeg -v error -sseof -4.5 -i joined.mp4 -frames:v 1 -q:v 2 thumbnail.jpg
+          ffmpeg -v error -i joined.mp4 -i thumbnail.jpg -map 0 -map 1 -c copy -disposition:v:1 attached_pic -movflags +faststart eo-25-chapters-1080p.mp4
           ffprobe -v error -show_entries format=duration -of csv=p=0 eo-25-chapters-1080p.mp4
       - name: Assemble site
         run: |
           mkdir _site
-          cp index.html chapters.json eo-25-chapters-1080p.mp4 _site/
+          cp index.html chapters.json eo-25-chapters-1080p.mp4 thumbnail.jpg _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
