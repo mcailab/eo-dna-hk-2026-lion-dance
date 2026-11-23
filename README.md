@@ -13,7 +13,7 @@ A neon globe reveals the 25 EO chapters one by one. Each chapter gets an animate
    - **A chapter with no single location** (e.g. APAC BRIDGE): give it a name only, with no `lat` / `lon`.
    - **Speed:** `seconds_per_chapter` (0.6 = 0.6 s per chapter).
    - **Finale and event title:** `final` and `event_line_1` / `event_line_2`.
-3. Click **Commit changes**. GitHub re-renders the MP4 automatically, which takes about 10–20 minutes (see the **Actions** tab). The page and the download then update.
+3. Click **Commit changes**. GitHub re-renders the MP4 automatically on 8 servers in parallel, which takes about 3–5 minutes (see the **Actions** tab). The page and the download then update.
 
 Keep the commas and quotes as they are. If the Actions run fails, the JSON is usually missing a comma.
 

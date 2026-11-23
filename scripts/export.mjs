@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import { spawn } from 'node:child_process';
-const [,, url, out, fpsArg] = process.argv;
+const [,, url, out, fpsArg, chunkArg, chunksArg] = process.argv;
+const chunk = Number(chunkArg || 0), chunks = Number(chunksArg || 1);
 const fps = Number(fpsArg || 30);
 const linux = process.platform === 'linux';
 const browser = await puppeteer.launch({
@@ -14,15 +15,16 @@ await page.waitForFunction('window.__ready === true', { timeout: 120000 });
 await page.evaluate(() => document.fonts.ready);
 const END = await page.evaluate(() => window.__END);
 const n = Math.round(END * fps);
+const f0 = Math.floor(n * chunk / chunks), f1 = Math.floor(n * (chunk + 1) / chunks);
 const ff = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out], { stdio: ['pipe', 'inherit', 'inherit'] });
-for (let f = 0; f < n; f++) {
+for (let f = f0; f < f1; f++) {
   await page.evaluate((t) => window.__render(t), f / fps);
   const buf = await page.screenshot({ type: 'jpeg', quality: 95 });
   if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
-  if (f % 60 === 0) console.log(`frame ${f}/${n}`);
+  if ((f - f0) % 30 === 0) console.log(`frame ${f} (chunk ${chunk + 1}/${chunks}: ${f0}–${f1 - 1} of ${n})`);
 }
 ff.stdin.end();
 await new Promise(r => ff.on('close', r));
 await browser.close();
-console.log('done', out, n, 'frames');
+console.log('done', out, f1 - f0, 'frames');
