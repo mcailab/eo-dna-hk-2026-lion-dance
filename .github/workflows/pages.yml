@@ -64,11 +64,14 @@ jobs:
           # thumbnail = Hong Kong finale frame (4.5 s before the end), also embedded as the MP4 cover
           ffmpeg -v error -sseof -4.5 -i joined.mp4 -frames:v 1 -q:v 2 thumbnail.jpg
           ffmpeg -v error -i joined.mp4 -i thumbnail.jpg -map 0 -map 1 -c copy -disposition:v:1 attached_pic -movflags +faststart eo-25-chapters-1080p.mp4
+          # SHARE version: opens on the HK title frame for 1 s so chat apps / Finder show it as the thumbnail
+          ffmpeg -v error -loop 1 -framerate 30 -t 1 -i thumbnail.jpg -i joined.mp4 -filter_complex "[0:v]scale=1920:1080,format=yuv420p,setsar=1[a];[1:v:0]format=yuv420p,setsar=1[b];[a][b]concat=n=2:v=1:a=0[v]" -map "[v]" -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p share-tmp.mp4
+          ffmpeg -v error -i share-tmp.mp4 -i thumbnail.jpg -map 0 -map 1 -c copy -disposition:v:1 attached_pic -movflags +faststart eo-25-chapters-1080p-SHARE.mp4
           ffprobe -v error -show_entries format=duration -of csv=p=0 eo-25-chapters-1080p.mp4
       - name: Assemble site
         run: |
           mkdir _site
-          cp index.html chapters.json eo-25-chapters-1080p.mp4 thumbnail.jpg _site/
+          cp index.html chapters.json eo-25-chapters-1080p.mp4 eo-25-chapters-1080p-SHARE.mp4 thumbnail.jpg _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

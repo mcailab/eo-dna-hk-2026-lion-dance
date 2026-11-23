@@ -3,7 +3,7 @@
 The opening section of the LED backdrop for the lion dance at the **EO Discover North Asia — Hong Kong · 30th Anniversary Celebration**.
 A neon globe reveals the 25 EO chapters one by one. Each chapter gets an animated EO-ring marker and its name. All lines then converge on **Hong Kong**, the EO mark locks on, the event title appears, and the camera dives through the rings.
 
-**Live page:** https://mcailab.github.io/eo-dna-hk-2026-lion-dance/. It has play/pause, a timeline and a **Download MP4 (1080p)** button.
+**Live page:** https://mcailab.github.io/eo-dna-hk-2026-lion-dance/. It has play/pause, a timeline and two downloads: **MP4 for LED** (starts from black, for the show) and **MP4 to share** (opens on the Hong Kong title, so chat apps show a proper thumbnail).
 
 ## Updating the chapters (no coding needed)
 1. Open [`chapters.json`](chapters.json) on GitHub and click the ✎ pencil, or use **Edit chapters** on the live page.

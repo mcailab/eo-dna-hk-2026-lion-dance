@@ -46,7 +46,7 @@
   <div class="o" id="hkZh">香 港</div>
   <div class="o" id="hk">HONG KONG</div>
 </div></div>
-<div id="ui"><button id="play">❚❚ Pause</button><button id="again">↺ Replay</button><a class="btn" id="dl" href="eo-25-chapters-1080p.mp4" download>⬇ Download MP4 (1080p)</a><a class="btn" id="edit" href="#" target="_blank" rel="noopener">✎ Edit chapters</a><button id="fs">⛶</button><input id="scrub" type="range" min="0" max="28" step="0.01" value="0"><span id="time"></span></div>
+<div id="ui"><button id="play">❚❚ Pause</button><button id="again">↺ Replay</button><a class="btn" id="dl" href="eo-25-chapters-1080p.mp4" download title="Starts from black: for playback on the LED wall">⬇ MP4 for LED</a><a class="btn" id="dls" href="eo-25-chapters-1080p-SHARE.mp4" download title="Opens on the Hong Kong title frame so chat apps show a proper thumbnail">⬇ MP4 to share</a><a class="btn" id="edit" href="#" target="_blank" rel="noopener">✎ Edit chapters</a><button id="fs">⛶</button><input id="scrub" type="range" min="0" max="28" step="0.01" value="0"><span id="time"></span></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -313,7 +313,7 @@ $('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'❚❚ Pa
 { const m=location.hostname.match(/^([^.]+)\.github\.io$/), repo=location.pathname.split('/').filter(Boolean)[0];
   if(m&&repo) $('edit').href=`https://github.com/${m[1]}/${repo}/edit/main/chapters.json`; else $('edit').style.display='none'; }
 $('fs').onclick=()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); };
-fetch('eo-25-chapters-1080p.mp4',{method:'HEAD'}).then(r=>{ if(!r.ok){ $('dl').textContent='MP4 building…'; $('dl').removeAttribute('href'); } }).catch(()=>{});
+fetch('eo-25-chapters-1080p.mp4',{method:'HEAD'}).then(r=>{ if(!r.ok){ $('dl').textContent='MP4 building…'; $('dl').removeAttribute('href'); $('dls').style.display='none'; } }).catch(()=>{});
 $('again').onclick=()=>{t=0;playing=true;$('play').textContent='❚❚ Pause';};
 scrub.oninput=()=>{t=parseFloat(scrub.value);};
 function loop(now){const dt=(now-last)/1000;last=now; if(playing){t+=dt; if(t>=END){t=END;playing=false;$('play').textContent='▶ Play';}}
